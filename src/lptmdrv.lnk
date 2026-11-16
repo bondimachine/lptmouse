@@ -1,0 +1,15 @@
+# wlink script for LPTMOUSE.DRV (16-bit Windows NE DLL, module name MOUSE)
+format windows dll
+name build/lptmouse.drv
+option modname=MOUSE
+option description 'Parallel port PS/2 mouse'
+option nodefaultlibs
+option oneautodata
+option map=build/lptmdrv.map
+file build/lptmdrv.obj
+export Inquire.1, Enable.2, Disable.3, MouseGetIntVect.4, WEP
+import GetPrivateProfileString KERNEL
+import GetPrivateProfileInt KERNEL
+import __0040H KERNEL.193
+segment type code preload fixed
+segment type data preload fixed

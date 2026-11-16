@@ -1,0 +1,7 @@
+# wlink script for LPTMOUSE.386 (Windows 3.x / 9x static VxD)
+format windows vxd static
+name build/lptmouse.386
+option nodefaultlibs
+option map=build/lptmvxd.map
+file build/lptmvxd.obj
+export LPTMOUSE_DDB.1

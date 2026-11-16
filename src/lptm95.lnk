@@ -1,0 +1,7 @@
+# wlink script for LPTMOUSE.VXD (Windows 95 dynamic VxD, VMOUSE mini-driver)
+format windows vxd dynamic
+name build/lptmouse.vxd
+option nodefaultlibs
+option map=build/lptm95.map
+file build/lptm95.obj
+export LPTM95_DDB.1

@@ -1,0 +1,58 @@
+; LPTMOUSE.INF - Windows 95 setup file for the parallel port PS/2 mouse
+; (VMOUSE mini-driver LPTMOUSE.VXD). Install it from Control Panel, Add New
+; Hardware, "No" (don't detect), Mouse, Have Disk.
+
+[Version]
+Signature="$CHICAGO$"
+Class=Mouse
+Provider=%Provider%
+
+[DestinationDirs]
+DefaultDestDir=11                       ; LDID_SYS: WINDOWS\SYSTEM
+
+[SourceDisksNames]
+1=%Disk%,,1
+
+[SourceDisksFiles]
+lptmouse.vxd=1
+
+[Manufacturer]
+%Provider%=LPTMouse.Models
+
+[LPTMouse.Models]
+%LPTMouse.Desc%=LPTMouse.Install
+
+[LPTMouse.Install]
+DelReg=LPTMouse.DelReg
+AddReg=LPTMouse.AddReg
+CopyFiles=LPTMouse.Copy
+UpdateInis=LPTMouse.Ini
+
+[LPTMouse.DelReg]
+HKR,,DevLoader
+HKR,,MouseDriver
+
+; Port, IRQ, Rate and Invert are 4-byte binary values, low byte first:
+; port 378h, IRQ 7, 40 samples/s, diode cable (1 = transistor cable)
+[LPTMouse.AddReg]
+HKR,,DevLoader,,*vmouse
+HKR,,MouseDriver,,lptmouse.vxd
+HKR,,Port,1,78,03,00,00
+HKR,,IRQ,1,07,00,00,00
+HKR,,Rate,1,28,00,00,00
+HKR,,Invert,1,00,00,00,00
+
+[LPTMouse.Copy]
+lptmouse.vxd
+
+; Windows' own MOUSE.DRV and VMOUSE; drop the Windows 3.1 VxD if present
+[LPTMouse.Ini]
+system.ini,boot.description,,"mouse.drv=%LPTMouse.Desc%"
+system.ini,boot,,"mouse.drv=mouse.drv"
+system.ini,386Enh,,"mouse=*vmouse"
+system.ini,386Enh,"device=lptmouse.386",
+
+[Strings]
+Provider="parallel-mouse"
+Disk="Parallel port mouse driver disk"
+LPTMouse.Desc="PS/2 mouse on the parallel port"
