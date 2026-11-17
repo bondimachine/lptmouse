@@ -254,6 +254,7 @@ do_service:
         mov byte [cs:in_service], 0
 .ret:   ret
 
+%define resend_empty irq             ; poll mode reads nothing most ticks
 %include "burst.inc"
 
 ; IRQ mode: CLK stays released, port IRQ on. Poll mode: hold CLK low.

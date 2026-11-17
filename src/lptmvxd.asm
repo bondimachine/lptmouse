@@ -122,6 +122,7 @@ burst_buf       times BURST_MAX db 0
 cnt_packets     dw 0
 cnt_errors      dw 0
 cnt_resend      dw 0
+resend_empty    db 1            ; always interrupt driven
 cnt_sync        dw 0
 
 ring_head       dd 0

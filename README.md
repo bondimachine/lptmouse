@@ -136,6 +136,9 @@ LPTMOUSE [/Ln | /Pxxx] [/In] [/Rnn] [/X] [/V] [/U] [/S]
 
 `LPTMOUSE /S` prints how many packets were read, frame errors, dropped
 bursts and resends. On a healthy setup the errors and drops stay at 0.
+Resends count packets the driver had to ask for again because the interrupt
+came late. A few are normal; if the cursor still lags in some program, try
+`/I0`, which can't lose packets.
 
 ## Windows 3.1
 
@@ -296,8 +299,11 @@ middle of a byte the mouse aborts that byte and sends it again later.
   - If the interrupt arrives so late that the first byte was already
     complete, the handler only gets part of the packet. It then sends the
     PS/2 Resend command (FE) and reads the packet again.
-  - If the whole packet was already sent before the handler ran, that
-    packet is lost.
+  - If the whole packet was already sent before the handler ran (something
+    kept interrupts off for longer than a packet takes, as Leisure Suit
+    Larry 2's interpreter does on an XT), the handler reads nothing. It then
+    also sends Resend. The mouse only keeps its last packet, so if several
+    packets went by unanswered, the earlier ones are still lost.
 - **Poll mode (`/I0`):** CLK is held low all the time. On each timer tick
   the driver releases it briefly and reads whatever the mouse has. No IRQ is
   needed, but the cursor only updates 18 times a second.

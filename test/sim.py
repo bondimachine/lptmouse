@@ -532,6 +532,65 @@ def driver_test(tail, label, irq_latency_us=0.0, ack_resend=False):
           (sim.mouse.aborts, sim.edges))
 
 
+HANDLER_SEG = 0x5000
+
+
+def handler_test(tail, label, irq_latency_us=0.0):
+    """Event handler (fn 0Ch) the way Sierra's SCI0 interpreter uses it:
+    reset in EGA mode 0Dh, read the position, then a handler for movement
+    and left button press/release that never shows the driver's cursor."""
+    print('== event handler %s (%s)' % (label, tail))
+    sim = Sim(irq_latency_us)
+    drv = os.path.join(ROOT, 'lptmouse.com')
+    reason, text = sim.run_program(drv, 0x1000, tail)
+    check(reason == 'tsr', 'driver stays resident')
+    if reason != 'tsr':
+        return
+    h = open(os.path.join(HERE, 'fixtures', 'handler.bin'), 'rb').read()
+    sim.mu.mem_write(HANDLER_SEG * 16, h)
+    sim.w8(0x449, 0x0D)
+    r = sim.int33(0)
+    check(r['ax'] == 0xFFFF, 'fn 0 reset')
+    r = sim.int33(3)
+    check(r['cx'] >= 300, 'mode 0Dh x range is 0-639 (centre %d)' % r['cx'])
+    sim.int33(0x0C, cx=7, dx=0, es=HANDLER_SEG)
+
+    t0 = sim.t + 5000
+    for i in range(20):
+        sim.move(t0 + i * 10000, 3, -1)
+    sim.move(t0 + 20 * 10000, 0, 0, 1)
+    sim.move(t0 + 21 * 10000, 2, 0, 1)            # drag
+    sim.move(t0 + 22 * 10000, 0, 0, 0)
+    sim.move(t0 + 23 * 10000, 0, 0, 2)            # right: not in the mask
+    sim.move(t0 + 24 * 10000, 0, 0, 0)
+    sim.idle(25 * 10000 + 300000)
+
+    base = HANDLER_SEG * 16
+    n = sim.r16(base + 0x70)
+    log = []
+    for i in range(min(n, 64)):
+        e = base + 0x80 + i * 16
+        log.append(tuple(sim.r16(e + k) for k in range(0, 16, 2)))
+    masks = [e[0] for e in log]
+    print('   %d calls, masks %s' % (n, ' '.join('%X' % m for m in masks)))
+    check(n == 23, 'handler called for 21 moves + press + release (%d)' % n)
+    check(masks.count(2) == 1 and masks.count(4) == 1, 'one left press, one release')
+    check(all(m & ~7 == 0 for m in masks), 'only masked events reported')
+    press = [e for e in log if e[0] & 2]
+    rel = [e for e in log if e[0] & 4]
+    if press and rel:
+        check(press[0][1] == 1 and rel[0][1] == 0, 'BX button state on press/release')
+    last = log[-1] if log else (0,) * 8
+    r = sim.int33(3)
+    check((r['cx'], r['dx']) == (last[2], last[3]),
+          'handler CX,DX match fn 3: %d,%d vs %d,%d' % (last[2], last[3], r['cx'], r['dx']))
+    sps = sorted(set((e[6], e[7]) for e in log))
+    print('   handler SS:SP seen: %s' % ' '.join('%04X:%04X' % s for s in sps))
+    reason, text = sim.run_program(drv, 0x3000, '/S')
+    print('   ' + text.strip().replace('\n', '\n   '))
+    check('frame errors: 0' in text, 'driver still healthy afterwards')
+
+
 def lpmtest_test():
     print('== lpmtest')
     sim = Sim()
@@ -552,7 +611,12 @@ if __name__ == '__main__':
     driver_test('/V', 'IRQ 7, 1500 us latency (resend)', irq_latency_us=1500.0)
     driver_test('/V', 'IRQ 7, 1500 us latency (resend, FA first)', irq_latency_us=1500.0,
                 ack_resend=True)
+    driver_test('/V', 'IRQ 7, 6 ms latency (whole packet missed)', irq_latency_us=6000.0)
     driver_test('/I0', 'timer polling')
+    handler_test('', 'IRQ 7')
+    handler_test('', 'IRQ 7, 1500 us latency', irq_latency_us=1500.0)
+    handler_test('', 'IRQ 7, 6 ms latency (like LSL2)', irq_latency_us=6000.0)
+    handler_test('/I0', 'timer polling')
     lpmtest_test()
     print()
     print('FAILED: %d' % len(FAILS) if FAILS else 'ALL PASSED')

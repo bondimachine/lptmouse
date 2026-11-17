@@ -120,6 +120,7 @@ nbytes          dw 0
 burst_buf       times BURST_MAX db 0
 cnt_errors      dw 0
 cnt_resend      dw 0
+resend_empty    db 1            ; always interrupt driven
 
 reg_value       dd 0
 reg_len         dd 0
